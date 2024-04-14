@@ -17,7 +17,7 @@ Polycache is built using rebar3.
 You can include it in your projects as a dependency in rebar.config:
 #+BEGIN_SRC erlang
   {deps, [%% ... Other dependencies
-         {rebar, {git, "git://github.com/hyperimpose/polycache.git", {branch, "master"}}}]}.
+         {rebar, {git, "git@github.com:hyperimpose/polycache.git", {branch, "master"}}}]}.
 #+END_SRC
 
 or compile it by running ~$ rebar3 compile~
