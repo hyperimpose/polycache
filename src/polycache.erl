@@ -15,7 +15,7 @@
 
 
 %% API
--export([start_link/0, new/1, get/2, set/3]).
+-export([start_link/0, new/1, get/2, set/3, set/4]).
 
 
 %% gen_server callbacks
@@ -27,17 +27,12 @@
 -define(NAME, ?MODULE).
 
 -record(state, {cache=[]}).
-
+-record(entry, {value, ttl}).
 
 
 %%%===================================================================
 %%% API
 %%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @doc Starts the server.
-%% @end
-%%--------------------------------------------------------------------
 
 -spec start_link() ->
           {ok, Pid :: pid()} |
@@ -49,19 +44,60 @@ start_link() ->
     gen_server:start_link({local, ?NAME}, ?MODULE, [], []).
 
 
+%%--------------------------------------------------------------------
+%% @doc Create a new cache.
+%%
+%% @param Size The total number of entries the table can hold.
+%% @returns A reference to the table.
+%% @end
+%%--------------------------------------------------------------------
+
 new(Size) ->
     gen_server:call(?NAME, {new, Size}).
 
 
+%%--------------------------------------------------------------------
+%% @doc Get the value associated with the Key from a Cache.
+%% @end
+%%--------------------------------------------------------------------
+
 get({Table, Size}, Key) ->
     case ets:lookup(Table, erlang:phash2(Key, Size)) of
-        [{_Hash, Key, Hit}] -> {ok, Hit};
-        []                  -> not_found
+        [{_Hash, Key, Hit}] -> get1(Hit);
+        _Else               -> not_found
+    end.
+
+get1(#entry{value = Value, ttl = undefined}) ->
+    {ok, Value};
+get1(#entry{value = Value, ttl = Ttl})       ->
+    Now = erlang:system_time(seconds),
+    if
+        Ttl > Now -> {ok, Value};
+        true      -> not_found
     end.
 
 
-set({Table, Size}, Key, Value) ->
-    true = ets:insert(Table, {erlang:phash2(Key, Size), Key, Value}).
+%%--------------------------------------------------------------------
+%% @doc Add or update a Cache entry.
+%%
+%% @param Cache The cache reference as returned by new/1
+%% @param Key The key to use for retrieval of the cache entry
+%% @param Value The value of the cache entry
+%% @param Opts A map of options for the cache entry. Available options:
+%%
+%% ttl: ttl is a timestamp in the future that marks the expiration of
+%%      the cache entry. It is compared to erlang:system_time(seconds).
+%%      If it is not given the cache entry will never expire.
+%% @end
+%%--------------------------------------------------------------------
+
+set(Cache, Key, Value) -> set(Cache, Key, Value, #{}).
+
+set({Table, Size}, Key, Value, Opts) ->
+    Ttl = maps:get(ttl, Opts, undefined),
+
+    Entry = #entry{value = Value, ttl = Ttl},
+    true = ets:insert(Table, {erlang:phash2(Key, Size), Key, Entry}).
 
 
 %%%===================================================================

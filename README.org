@@ -7,8 +7,9 @@ occures the previous value is replaced.
 
 Polycache is built on top of ETS. Insertions and lookups go directly
 to ETS without any serialization or locking. This allows concurrent
-access without bottlenecks. Projects using this library should
-implement locking based on their specific requirements.
+access without bottlenecks.
+
+*Projects using this library should implement locking based on their specific requirements.*
 
 ** Build
 
@@ -27,7 +28,7 @@ or compile it by running ~$ rebar3 compile~
 The ~polycache~ module contains the API that should be used by other
 programs.
 
-Three functions are exported by botjson: new/1, get/2 and set/3.
+Three functions are exported by polycache: new/1, get/2, set/3, set/4.
 
 #+BEGIN_SRC erlang
   %% First, make sure that the application has been started.
@@ -42,6 +43,11 @@ Three functions are exported by botjson: new/1, get/2 and set/3.
   %% Insert a new entry to the cache: set(Cache, Key, Value).
   polycache:set(Cache, key, 5).
 
+  %% You can also set an expiration timestamp for this entry. If get/2
+  %% is called after the entry has expired not_found will be returned.
+  Ttl = erlang:system_time(seconds) + 300.  % Expires in 5 minutes
+  polycache:set(Cache, key, 5, #{ttl => Ttl}).
+
   %% Retrieve a value from the cache.
   case polycache:get(Cache, key) of
       {ok, Hit} -> Hit;       % Hit is the value saved in the cache
@@ -51,9 +57,10 @@ Three functions are exported by botjson: new/1, get/2 and set/3.
 
 ** Future work
 
-Polycache can be extended to work accross multiple nodes by sharing the contents
+- Polycache can be extended to work accross multiple nodes by sharing the contents
 of each local cache.
-  
+- Two ETS tables could be used for each cache similarly to the 2-random algorithm.
+
 ** License
 
 polycache is licensed under the [[https://spdx.org/licenses/BSD-3-Clause.html][BSD 3-Clause "New" or "Revised" License]].
